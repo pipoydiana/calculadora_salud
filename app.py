@@ -4,142 +4,158 @@ import pandas as pd
 # =================================================================
 # CONFIGURACIÓN GLOBAL DE LA APLICACIÓN
 # =================================================================
-# Definimos el título de la pestaña del navegador y el icono.
 st.set_page_config(
-    page_title="Calculadora de Tasa Metabólica Basal",
-    page_icon="🔥",
+    page_title="Calculadora Nutricional Pro",
+    page_icon="⚖️",
     layout="centered"
 )
 
-# Inyectamos CSS personalizado para mejorar el aspecto visual (colores, bordes y botones)
+# Estilos CSS para mejorar la interfaz y las alertas
 st.markdown("""
     <style>
     .main {
-        background-color: #f4f6f9;
+        background-color: #f8f9fa;
     }
     .stButton>button {
         width: 100%;
-        border-radius: 5px;
+        border-radius: 8px;
         height: 3em;
-        background-color: #3498db;
+        background-color: #2e86de;
         color: white;
         font-weight: bold;
-        transition: 0.3s;
     }
-    .stButton>button:hover {
-        background-color: #2980b9;
-        border-color: #2980b9;
-    }
-    .stAlert {
+    .stMetric {
+        background-color: #ffffff;
+        padding: 15px;
         border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     </style>
     """, unsafe_allow_html=True)
 
 # =================================================================
-# SECCIÓN 1: ENCABEZADO Y TEXTOS EDUCATIVOS
+# SECCIÓN 1: ENCABEZADO Y EDUCACIÓN
 # =================================================================
-st.title("🔥 Calculadora Avanzada de TMB")
-st.subheader("Entiende tu Gasto Energético")
+st.title("⚖️ Calculadora Nutricional y Metabólica")
+st.markdown("### Evaluación Integral: IMC, TMB y Gasto Energético")
 
-# Usamos un "expander" para mostrar la explicación sin saturar la pantalla inicial
-with st.expander("¿Cómo funciona esta calculadora?", expanded=True):
+with st.expander("ℹ️ Información sobre los cálculos y fuentes", expanded=False):
     st.write("""
-        La **Tasa Metabólica Basal (TMB)** representa las calorías que quemas simplemente por existir (mantener órganos vivos). 
+        **¿Qué medimos aquí?**
+        1. **IMC (Índice de Masa Corporal):** Clasifica el estado nutricional basado en la relación entre peso y talla.
+        2. **TMB (Tasa Metabólica Basal):** Calorías mínimas para funciones vitales (Mifflin-St Jeor).
+        3. **GET (Gasto Energético Total):** Calorías totales según tu nivel de actividad física.
         
-        **Lógica del cálculo:**
-        1. **Fórmula de Mifflin-St Jeor:** Es el estándar actual de la industria para estimar el metabolismo en reposo.
-        2. **Factor de Actividad:** Multiplicamos la TMB por un coeficiente según tu estilo de vida para obtener el **GET (Gasto Energético Total)**.
+        **Fuentes Oficiales:**
+        - Clasificaciones de peso: *Organización Mundial de la Salud (OMS)*.
+        - Ecuación de TMB: *Mifflin, M. D., et al. (1990)*.
     """)
 
-st.divider() # Línea divisoria visual
+st.divider()
 
 # =================================================================
-# SECCIÓN 2: ENTRADA DE DATOS DEL USUARIO
+# SECCIÓN 2: ENTRADA DE DATOS
 # =================================================================
-# Dividimos la entrada en dos columnas para que sea más simétrico
-col1, col2 = st.columns(2)
+col_a, col_b = st.columns(2)
 
-with col1:
-    genero = st.radio("Selecciona tu Género", ["Hombre", "Mujer"], horizontal=True)
-    edad = st.number_input("Edad (años)", min_value=1, max_value=120, value=25)
+with col_a:
+    genero = st.radio("Género biológico", ["Hombre", "Mujer"], horizontal=True)
+    edad = st.number_input("Edad (años)", min_value=1, max_value=110, value=30)
 
-with col2:
-    peso = st.number_input("Peso actual (kg)", min_value=10.0, max_value=300.0, value=70.0, step=0.1)
-    altura = st.number_input("Altura (cm)", min_value=50, max_value=250, value=170)
+with col_b:
+    peso = st.number_input("Peso (kg)", min_value=20.0, max_value=250.0, value=70.0, step=0.1)
+    altura = st.number_input("Altura (cm)", min_value=100, max_value=230, value=170)
 
-# Selector para el nivel de actividad física diaria
 nivel_actividad = st.selectbox(
-    "¿Cuál es tu nivel de actividad física?",
+    "Nivel de actividad física diaria",
     [
-        "Sedentario (Poco o ningún ejercicio)",
-        "Ligero (Ejercicio ligero 1-3 días/semana)",
-        "Moderado (Ejercicio moderado 3-5 días/semana)",
-        "Activo (Ejercicio fuerte 6-7 días/semana)",
-        "Muy Activo (Ejercicio muy fuerte o trabajo físico)"
+        "Sedentario (Poco o nada)",
+        "Ligero (1-3 días/semana)",
+        "Moderado (3-5 días/semana)",
+        "Activo (6-7 días/semana)",
+        "Muy Activo (Atleta o trabajo físico pesado)"
     ]
 )
 
-# Diccionario que asocia cada opción con su coeficiente multiplicador científico
-mapa_actividad = {
-    "Sedentario (Poco o ningún ejercicio)": 1.2,
-    "Ligero (Ejercicio ligero 1-3 días/semana)": 1.375,
-    "Moderado (Ejercicio moderado 3-5 días/semana)": 1.55,
-    "Activo (Ejercicio fuerte 6-7 días/semana)": 1.725,
-    "Muy Activo (Ejercicio muy fuerte o trabajo físico)": 1.9
+# Diccionario de factores de actividad (Harris-Benedict / Mifflin)
+factores = {
+    "Sedentario (Poco o nada)": 1.2,
+    "Ligero (1-3 días/semana)": 1.375,
+    "Moderado (3-5 días/semana)": 1.55,
+    "Activo (6-7 días/semana)": 1.725,
+    "Muy Activo (Atleta o trabajo físico pesado)": 1.9
 }
 
 # =================================================================
-# SECCIÓN 3: LÓGICA DE PROCESAMIENTO Y RESULTADOS
+# SECCIÓN 3: CÁLCULOS LÓGICOS
 # =================================================================
-if st.button("🚀 Calcular mis Requerimientos"):
+if st.button("🚀 Realizar Evaluación Completa"):
     
-    # --- Implementación de la Fórmula de Mifflin-St Jeor ---
-    # La diferencia entre géneros radica en el ajuste final (+5 vs -161)
+    # 1. Cálculo de IMC (Peso / Altura en metros al cuadrado)
+    altura_m = altura / 100
+    imc = peso / (altura_m ** 2)
+    
+    # Determinación de categoría IMC según la OMS
+    if imc < 18.5:
+        categoria_imc = "Bajo peso"
+        color_imc = "inverse" # Azul/Gris
+        consejo = "Se recomienda aumentar la ingesta calórica con alimentos densos en nutrientes."
+    elif 18.5 <= imc < 24.9:
+        categoria_imc = "Peso saludable"
+        color_imc = "normal" # Verde
+        consejo = "¡Excelente! Mantén tus hábitos actuales de alimentación y ejercicio."
+    elif 25.0 <= imc < 29.9:
+        categoria_imc = "Sobrepeso"
+        color_imc = "off" # Amarillo/Naranja
+        consejo = "Considera aumentar la actividad física y revisar el tamaño de las porciones."
+    else:
+        categoria_imc = "Obesidad"
+        color_imc = "off" # Rojo
+        consejo = "Se recomienda consultar con un médico o nutricionista para un plan de salud integral."
+
+    # 2. Cálculo de TMB (Mifflin-St Jeor)
     if genero == "Hombre":
         tmb = (10 * peso) + (6.25 * altura) - (5 * edad) + 5
     else:
         tmb = (10 * peso) + (6.25 * altura) - (5 * edad) - 161
-    
-    # Obtenemos el factor basado en la selección del usuario
-    factor = mapa_actividad[nivel_actividad]
-    get = tmb * factor # Gasto Energético Total
+        
+    # 3. Cálculo de GET
+    get = tmb * factores[nivel_actividad]
 
+    # --- MOSTRAR RESULTADOS ---
     st.divider()
     
-    # Mostramos los resultados usando componentes de métricas (estilo Dashboard)
-    res_col1, res_col2 = st.columns(2)
+    # Fila 1: IMC y Estado
+    st.markdown(f"#### Estado Nutricional (IMC): **{categoria_imc}**")
+    m_col1, m_col2 = st.columns(2)
+    m_col1.metric("Tu IMC", f"{imc:.1f}")
+    m_col2.info(f"**Sugerencia:** {consejo}")
     
-    with res_col1:
-        st.metric(label="TMB (Metabolismo en Reposo)", value=f"{tmb:,.0f} kcal")
-        st.info("Estas son las calorías que quemas sin moverte en todo el día.")
-        
-    with res_col2:
-        st.metric(label="GET (Gasto Total Diario)", value=f"{get:,.0f} kcal")
-        st.success("Calorías estimadas para mantener tu peso actual con tu actividad.")
+    # Fila 2: Calorías
+    st.markdown("#### Requerimientos Energéticos")
+    c_col1, c_col2 = st.columns(2)
+    c_col1.metric("TMB (Reposo)", f"{tmb:,.0f} kcal")
+    c_col2.metric("GET (Mantenimiento)", f"{get:,.0f} kcal")
 
-    # --- Generación de Gráfico Comparativo ---
-    st.subheader("Comparativa Visual de Energía")
-    # Creamos un pequeño DataFrame para alimentar el gráfico de Streamlit
-    datos_grafico = pd.DataFrame({
-        "Categoría": ["Reposo (TMB)", "Total con Actividad (GET)"],
+    # Gráfico
+    st.subheader("Visualización de Gasto Calórico")
+    df_data = pd.DataFrame({
+        "Tipo de Gasto": ["Basal (Reposo)", "Total (Actividad)"],
         "Calorías": [tmb, get]
     })
-    
-    # st.bar_chart es una forma rápida y elegante de visualizar estos datos
-    st.bar_chart(data=datos_grafico, x="Categoría", y="Calorías", color="#3498db")
+    st.bar_chart(df_data, x="Tipo de Gasto", y="Calorías", color="#2e86de")
 
 # =================================================================
-# SECCIÓN 4: INFORMACIÓN LEGAL Y DE SALUD (BARRA LATERAL)
+# SECCIÓN 4: ADVERTENCIAS Y NOTAS FINALES
 # =================================================================
-st.sidebar.header("Información Importante")
-
-st.sidebar.warning("""
-**⚠️ ADVERTENCIA MÉDICA:** Este software es una herramienta informativa basada en fórmulas estadísticas. 
-No constituye un diagnóstico médico. Los resultados pueden variar según la masa muscular, genética y estado de salud.
+st.sidebar.title("⚠️ Notas Importantes")
+st.sidebar.error("""
+**DESCARGO DE RESPONSABILIDAD:** Los resultados son estimaciones basadas en promedios poblacionales. 
+El IMC no distingue entre masa muscular y grasa. 
 """)
 
-st.sidebar.info("""
-**Recomendación:**
-Para planes de pérdida o ganancia de peso, consulta siempre con un nutricionista o profesional de la salud certificado.
+st.sidebar.markdown("""
+**Fuentes Utilizadas:**
+- *Organización Mundial de la Salud (OMS)* para rangos de IMC.
+- *Fórmula Mifflin-St Jeor (1990)* para metabolismo.
 """)
